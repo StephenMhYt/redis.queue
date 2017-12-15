@@ -16,14 +16,14 @@ public class RedisPublisher{
     /**
      *
      * @param channel
-     * @param key
+     * @param queueName
      * @param message
      */
-    public void publishAndSendMessage(String channel,String key,String message){
-        jedisTemplate.lpush(key,message);
-        jedisTemplate.publish(channel,key);
-        LOGGER.info("succeed to publish to the channel:{},and send message:{} to the key:{}"
-                ,channel,message,key);
+    public void publishAndSendMessage(String channel,String queueName,String message){
+        jedisTemplate.lpush(queueName,message);
+        jedisTemplate.publish(channel,queueName);
+        LOGGER.info("succeed to publish to the channel:{},and send message:{} to the queueName:{}"
+                ,channel,message,queueName);
     }
 
     public void setJedisTemplate(JedisTemplate jedisTemplate) {

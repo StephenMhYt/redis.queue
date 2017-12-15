@@ -3,7 +3,11 @@ package cn.com.maoh.subscribe;
 import cn.com.maoh.template.JedisTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.task.support.ExecutorServiceAdapter;
 import redis.clients.jedis.JedisPubSub;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 
 /**
@@ -14,22 +18,28 @@ public class RedisSubscribeThread extends Thread{
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RedisSubscribeThread.class);
 
-    private JedisPubSub subsriber;
+    private JedisPubSub subscriber;
 
     private String channel;
 
     private JedisTemplate jedisTemplate;
 
-    public RedisSubscribeThread(JedisPubSub subsriber,String channel,JedisTemplate jedisTemplate){
-        this.subsriber = subsriber;
+    public RedisSubscribeThread(JedisPubSub subscriber,String channel,JedisTemplate jedisTemplate){
+        this.subscriber = subscriber;
         this.channel = channel;
         this.jedisTemplate = jedisTemplate;
     }
 
     @Override
     public void run(){
-        //订阅channel频道
-        jedisTemplate.subscribe(subsriber, channel);
-        LOGGER.info("succeed to subscribe the channel:{}",channel);
+        //订阅channel频道,
+        // while(true)是因为,当subscribe方法报错（如网络问题连接超时），则一直重复连接，直到正常成功订阅
+        while (true) {
+            try {
+                jedisTemplate.subscribe(subscriber, channel);
+            }catch (Exception e){
+                LOGGER.info("error"+e.getMessage()+",restart to subscribe");
+            }
+        }
     }
 }

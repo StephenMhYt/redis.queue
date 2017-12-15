@@ -8,6 +8,8 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.util.StringUtils;
 import redis.clients.jedis.JedisPubSub;
 
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import java.util.Map;
 import java.util.concurrent.*;
 
@@ -32,6 +34,8 @@ public class RedisSubscriber extends JedisPubSub implements InitializingBean{
     private String channel;
 
     private ThreadPoolExecutor pool;
+
+    private ExecutorService executor;
 
     private JedisTemplate jedisTemplate;
 
@@ -58,8 +62,8 @@ public class RedisSubscriber extends JedisPubSub implements InitializingBean{
         LOGGER.info("unsubscribe redis channel, channel:{}, subscribedChannels:{}", channel, subscribedChannels);
     }
 
-    @Override
-    public void afterPropertiesSet() throws Exception {
+    @PostConstruct
+    public void init(){
         //创建线程池对象
         pool = new ThreadPoolExecutor(corePoolSize,maximumPoolSize,keepAliveTime,
                 TimeUnit.MILLISECONDS,
@@ -67,9 +71,20 @@ public class RedisSubscriber extends JedisPubSub implements InitializingBean{
                 Executors.defaultThreadFactory(),
                 new ThreadPoolExecutor.AbortPolicy());
 
+        executor = Executors.newSingleThreadExecutor();
+    }
+
+    @PreDestroy
+    public void destroy(){
+        executor.shutdown();
+        pool.shutdown();//shutdown()是已经提交的任务执行完毕后关闭，shutdownNow()是尚未执行的任务全部取消，正在执行的发出interrupt()
+    }
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
         //由于redis的订阅方法subscribe是线程阻塞的，故另启一个线程订阅消息
         RedisSubscribeThread thread = new RedisSubscribeThread(this,channel,jedisTemplate);
-        thread.start();
+        executor.execute(thread);
     }
 
     public Map<String, IMessageHandler> getListeners() {
