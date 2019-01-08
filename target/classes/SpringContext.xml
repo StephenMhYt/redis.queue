@@ -13,7 +13,7 @@
         <constructor-arg index="0" ref="jedisFactory"/>
     </bean>
 
-    <bean id="redisMQTopicPubSub" class="cn.com.maoh.topic.RedisMQTopicMessageListenerContainer">
+    <bean id="redisMQTopicPubSub" class="cn.com.maoh.topic.RedisMQTopicPubSub">
         <property name="messageHandler">
             <bean class="cn.com.maoh.handler.impl.DefaultMessageHandler"/>
         </property>

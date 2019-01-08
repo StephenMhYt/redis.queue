@@ -1,0 +1,5 @@
+
+{"msgId":"e55866c7-b80d-4e3a-ba15-543434bb1b88","msgBody":"this is test1","status":1,"msgType":1,"queueName":"thecover.queue"}
+{"msgId":"8466080b-de9f-40b3-b7a7-d69a2f882645","msgBody":"this is test2","status":1,"msgType":2,"channel":"thecover.channel"}
+{"msgId":"47f98055-ca8f-4073-81c6-7e034d64d068","msgBody":"this is test1","status":1,"msgType":1,"queueName":"thecover.queue"}
+{"msgId":"8dc74748-beb9-466b-9b99-5ec8ae83d92c","msgBody":"this is test2","status":1,"msgType":2,"channel":"thecover.channel"}

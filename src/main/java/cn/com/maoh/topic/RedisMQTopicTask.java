@@ -1,18 +1,21 @@
-package cn.com.maoh.subscribe;
+package cn.com.maoh.topic;
 
 import cn.com.maoh.handler.IMessageHandler;
 
 /**
  * Created by maoh on 2017/12/4.
  */
-public class SubscribeTask implements Runnable {
+public class RedisMQTopicTask implements Runnable {
 
     private IMessageHandler handler;
 
     private String message;
 
-    public SubscribeTask(IMessageHandler handler, String message){
+    private RedisMQTopic topic;
+
+    public RedisMQTopicTask(IMessageHandler handler,RedisMQTopic topic, String message){
         this.handler = handler;
+        this.topic = topic;
         this.message = message;
     }
 
@@ -35,5 +38,13 @@ public class SubscribeTask implements Runnable {
     private void execute(IMessageHandler handler, String message){
         //消息处理
         handler.handleMessage(message);
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public RedisMQTopic getTopic() {
+        return topic;
     }
 }

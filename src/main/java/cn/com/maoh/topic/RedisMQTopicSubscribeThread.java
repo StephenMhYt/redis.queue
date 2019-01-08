@@ -1,22 +1,18 @@
-package cn.com.maoh.subscribe;
+package cn.com.maoh.topic;
 
 import cn.com.maoh.template.JedisTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.task.support.ExecutorServiceAdapter;
 import redis.clients.jedis.JedisPubSub;
-
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 
 /**
  * 由于redis的订阅方法subscribe是线程阻塞的，故另启一个线程订阅消息
  * Created by maoh on 2017/12/3.
  */
-public class RedisSubscribeThread extends Thread{
+public class RedisMQTopicSubscribeThread extends Thread{
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(RedisSubscribeThread.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(RedisMQTopicSubscribeThread.class);
 
     private JedisPubSub subscriber;
 
@@ -24,7 +20,7 @@ public class RedisSubscribeThread extends Thread{
 
     private JedisTemplate jedisTemplate;
 
-    public RedisSubscribeThread(JedisPubSub subscriber,String channel,JedisTemplate jedisTemplate){
+    public RedisMQTopicSubscribeThread(JedisPubSub subscriber, String channel, JedisTemplate jedisTemplate){
         this.subscriber = subscriber;
         this.channel = channel;
         this.jedisTemplate = jedisTemplate;

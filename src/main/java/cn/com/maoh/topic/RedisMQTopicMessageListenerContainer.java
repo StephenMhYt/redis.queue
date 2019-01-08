@@ -1,7 +1,9 @@
-package cn.com.maoh.subscribe;
+package cn.com.maoh.topic;
 
+import cn.com.maoh.constants.RedisMQConstant;
 import cn.com.maoh.handler.IMessageHandler;
 import cn.com.maoh.template.JedisTemplate;
+import cn.com.maoh.thread.RedisMQAbortPolicyWithReport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
@@ -10,7 +12,6 @@ import redis.clients.jedis.JedisPubSub;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
-import java.util.Map;
 import java.util.concurrent.*;
 
 /**
@@ -19,11 +20,11 @@ import java.util.concurrent.*;
  *
  * Created by maoh on 2017/12/4.
  */
-public class RedisSubscriber extends JedisPubSub implements InitializingBean{
+public class RedisMQTopicMessageListenerContainer extends JedisPubSub implements InitializingBean{
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(RedisSubscriber.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(RedisMQTopicMessageListenerContainer.class);
 
-    private Map<String,IMessageHandler>  listeners;
+    private IMessageHandler messageHandler;
 
     private int corePoolSize=3;
 
@@ -31,27 +32,16 @@ public class RedisSubscriber extends JedisPubSub implements InitializingBean{
 
     private long keepAliveTime=100L;
 
-    private String channel;
-
     private ThreadPoolExecutor pool;
 
     private ExecutorService executor;
 
-    private JedisTemplate jedisTemplate;
+    private RedisMQTopic redisMQTopic;
 
     @Override
     public final void onMessage(String channel, String message) {
         //订阅者接收到发布消息
-        IMessageHandler messageHandler = listeners.get(message);
-        if (messageHandler == null){
-            return;
-        }
-        String value = jedisTemplate.rpop(message);
-        if(StringUtils.isEmpty(value)){
-            return;
-        }
-
-        pool.execute(new SubscribeTask(messageHandler, value));
+        pool.execute(new RedisMQTopicTask(messageHandler,redisMQTopic, message));
     }
 
     public void onSubscribe(String channel, int subscribedChannels) {
@@ -69,7 +59,7 @@ public class RedisSubscriber extends JedisPubSub implements InitializingBean{
                 TimeUnit.MILLISECONDS,
                 new SynchronousQueue<Runnable>(),
                 Executors.defaultThreadFactory(),
-                new ThreadPoolExecutor.AbortPolicy());
+                new RedisMQAbortPolicyWithReport());
 
         executor = Executors.newSingleThreadExecutor();
     }
@@ -82,17 +72,37 @@ public class RedisSubscriber extends JedisPubSub implements InitializingBean{
 
     @Override
     public void afterPropertiesSet() throws Exception {
+        checkParam();
+        JedisTemplate jedisTemplate = redisMQTopic.getJedisTemplate();
+        String channel = redisMQTopic.getChannel();
+        //记录订阅者+1
+        jedisTemplate.incr(RedisMQConstant.REDIS_SUB_NUM_REDIS_KEY_PREFIX+channel);
         //由于redis的订阅方法subscribe是线程阻塞的，故另启一个线程订阅消息
-        RedisSubscribeThread thread = new RedisSubscribeThread(this,channel,jedisTemplate);
+        RedisMQTopicSubscribeThread thread = new RedisMQTopicSubscribeThread(this,channel,jedisTemplate);
         executor.execute(thread);
     }
 
-    public Map<String, IMessageHandler> getListeners() {
-        return listeners;
+    private void checkParam(){
+        if (redisMQTopic == null){
+            throw new RuntimeException("the redisMQTopic cannot be null");
+        }
+        if (StringUtils.isEmpty(redisMQTopic.getChannel())){
+            throw new RuntimeException("the subscribe channel cannot be null");
+        }
+        if (redisMQTopic.getJedisTemplate() == null){
+            throw new RuntimeException("the redis template cannot be null");
+        }
+        if (messageHandler == null){
+            throw new RuntimeException("the message handler cannot be null");
+        }
     }
 
-    public void setListeners(Map<String, IMessageHandler> listeners) {
-        this.listeners = listeners;
+    public IMessageHandler getMessageHandler() {
+        return messageHandler;
+    }
+
+    public void setMessageHandler(IMessageHandler messageHandler) {
+        this.messageHandler = messageHandler;
     }
 
     public int getCorePoolSize() {
@@ -119,12 +129,12 @@ public class RedisSubscriber extends JedisPubSub implements InitializingBean{
         this.keepAliveTime = keepAliveTime;
     }
 
-    public String getChannel() {
-        return channel;
+    public RedisMQTopic getRedisMQTopic() {
+        return redisMQTopic;
     }
 
-    public void setChannel(String channel) {
-        this.channel = channel;
+    public void setRedisMQTopic(RedisMQTopic redisMQTopic) {
+        this.redisMQTopic = redisMQTopic;
     }
 
     public ThreadPoolExecutor getPool() {
@@ -135,11 +145,4 @@ public class RedisSubscriber extends JedisPubSub implements InitializingBean{
         this.pool = pool;
     }
 
-    public JedisTemplate getJedisTemplate() {
-        return jedisTemplate;
-    }
-
-    public void setJedisTemplate(JedisTemplate jedisTemplate) {
-        this.jedisTemplate = jedisTemplate;
-    }
 }
